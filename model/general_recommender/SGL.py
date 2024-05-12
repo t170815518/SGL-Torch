@@ -206,8 +206,8 @@ class SGL(AbstractRecommender):
 
         if is_subgraph and self.ssl_ratio > 0:
             if aug_type == 'nd':
-                drop_user_idx = randint_choice(self.num_users, size=self.num_users * self.ssl_ratio, replace=False)
-                drop_item_idx = randint_choice(self.num_items, size=self.num_items * self.ssl_ratio, replace=False)
+                drop_user_idx = randint_choice(self.num_users, size=int(self.num_users * self.ssl_ratio), replace=False)
+                drop_item_idx = randint_choice(self.num_items, size=int(self.num_items * self.ssl_ratio), replace=False)
                 indicator_user = np.ones(self.num_users, dtype=np.float32)
                 indicator_item = np.ones(self.num_items, dtype=np.float32)
                 indicator_user[drop_user_idx] = 0.
