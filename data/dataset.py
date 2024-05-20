@@ -24,6 +24,40 @@ _column_dict = {"UI": [_USER, _ITEM],
                 }
 
 
+def generate_adversarial_examples(df, proportion):
+    """
+    Generate adversarial examples by adding a certain proportion of negative user-item interactions.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame with two columns: 'user_id' and 'item_id'.
+    proportion (float): Proportion of adversarial examples to be added (e.g., 0.05, 0.10, 0.15, 0.20).
+
+    Returns:
+    pd.DataFrame: DataFrame with adversarial examples.
+    """
+    # Number of adversarial examples to be added
+    num_adversarial = int(proportion * len(df))
+
+    # Unique user ids and item ids
+    unique_users = df['user'].unique()
+    unique_items = df['item'].unique()
+
+    # Generate adversarial examples
+    adversarial_users = np.random.choice(unique_users, num_adversarial)
+    adversarial_items = np.random.choice(unique_items, num_adversarial)
+
+    # Create DataFrame for adversarial examples
+    adversarial_df = pd.DataFrame({
+            'user': adversarial_users,
+            'item': adversarial_items
+            })
+
+    # Concatenate original DataFrame with adversarial examples
+    df_with_adversarial = pd.concat([df, adversarial_df], ignore_index=True, axis=0)
+
+    return df_with_adversarial
+
+
 class Interaction(object):
     @typeassert(data=(pd.DataFrame, None), num_users=(int, None), num_items=(int, None))
     def __init__(self, data=None, num_users=None, num_items=None):
@@ -201,7 +235,7 @@ class Interaction(object):
 
 
 class Dataset(object):
-    def __init__(self, data_dir, dataset_name, sep, columns):
+    def __init__(self, data_dir, dataset_name, sep, columns, bad_percentage: float = 0):
         """Dataset
 
         Notes:
@@ -224,6 +258,7 @@ class Dataset(object):
 
         self._data_dir = os.path.join(data_dir, dataset_name)
         self.data_name = dataset_name
+        self.bad_percentage = bad_percentage
 
         # metadata
         self.train_data = Interaction()
@@ -309,6 +344,9 @@ class Dataset(object):
         else:
             raise FileNotFoundError("%s does not exist." % train_file)
 
+        if self.bad_percentage > 0:
+            _train_data = generate_adversarial_examples(_train_data, self.bad_percentage)
+
         valid_file = file_prefix + ".valid"
         if os.path.isfile(valid_file):
             _valid_data = pd.read_csv(valid_file, sep=sep, header=None, names=columns)
@@ -341,10 +379,10 @@ class Dataset(object):
         # statistical information
         data_list = [data for data in [_train_data, _valid_data, _test_data] if not data.empty]
         all_data = pd.concat(data_list)
-        self.num_users = max(all_data[_USER]) + 1
-        self.num_items = max(all_data[_ITEM]) + 1
-        self.num_ratings = len(all_data)
-        self.num_train_ratings = len(_train_data)
+        self.num_users = int(max(all_data[_USER]) + 1)
+        self.num_items = int(max(all_data[_ITEM]) + 1)
+        self.num_ratings = int(len(all_data))
+        self.num_train_ratings = int(len(_train_data))
 
         # convert to to the object of Interaction
         self.train_data = Interaction(_train_data, num_users=self.num_users, num_items=self.num_items)
